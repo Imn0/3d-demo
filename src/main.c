@@ -13,8 +13,8 @@
 #define MAPSIZE_R 8
 #define MAPSIZE_C 8
 
-#define CELLING_COLOR 0xFF101010
-#define FLOOR_COLOR 0xFF202020
+#define CELLING_COLOR 0xFF202020
+#define FLOOR_COLOR 0xFF303030
 
 typedef struct Player {
     v2 position;
@@ -32,6 +32,11 @@ u8 map[MAPSIZE_R][MAPSIZE_C] = {
     {1, 0, 0, 0, 0, 0, 0, 1},
     {1, 1, 1, 1, 1, 1, 1, 1}
 };
+
+typedef struct Sprite {
+    v2 position;
+    SDL_Surface* texture;
+} Sprite;
 
 void calculate_line_draw_start_end(i32* draw_start, i32* draw_end, f32 perpendicular_wall_dist) {
     i32 line_height = (i32)(SCREEN_HEIGHT / perpendicular_wall_dist);
@@ -69,9 +74,58 @@ u32 get_argb_from_position(f32 x, f32 y, SDL_Surface* map1) {
 
     u8* _pixels = (u8*)map1->pixels;
 
-    u8 red, green, blue;
-    SDL_GetRGB(*(u32*)(_pixels + pixelIndex), pixelFormat, &red, &green, &blue);
-    return (0xFF << 24) | (red << 16) | (green << 8) | blue;
+    u8 red, green, blue, alpha;
+    SDL_GetRGBA(*(u32*)(_pixels + pixelIndex), pixelFormat, &red, &green, &blue, &alpha);
+    return (alpha << 24) | (red << 16) | (green << 8) | blue;
+}
+
+
+void render_sprites(Player player, u32* pixels, Sprite sprite) {
+    // sprite position relative to the player
+    f32 sprite_x = sprite.position.x - player.position.x;
+    f32 sprite_y = sprite.position.y - player.position.y;
+
+    // transform sprite with the inverse camera matrix
+    f32 inv_det = 1.0 / (player.camera_plane.x * player.direction.y - player.direction.x * player.camera_plane.y);
+    f32 transform_x = inv_det * (player.direction.y * sprite_x - player.direction.x * sprite_y);
+    f32 transform_y = inv_det * (-player.camera_plane.y * sprite_x + player.camera_plane.x * sprite_y);
+
+    // calculate screen position of the sprite
+    int sprite_screen_x = (int)((SCREEN_WIDTH / 2) * (1 + transform_x / transform_y));
+
+    // calculate height and width of the sprite
+    int sprite_height = abs((int)(SCREEN_HEIGHT / transform_y));
+    int sprite_width = abs((int)(SCREEN_HEIGHT / transform_y));
+
+    // calculate start and end points for drawing the sprite
+    int draw_start_y = -sprite_height / 2 + SCREEN_HEIGHT / 2;
+    // if (draw_start_y < 0) draw_start_y = 0;
+    int draw_end_y = sprite_height / 2 + SCREEN_HEIGHT / 2;
+    // if (draw_end_y >= SCREEN_HEIGHT) draw_end_y = SCREEN_HEIGHT - 1;
+
+    int draw_start_x = -sprite_width / 2 + sprite_screen_x;
+    // if (draw_start_x < 0) draw_start_x = 0;
+    int draw_end_x = sprite_width / 2 + sprite_screen_x;
+    // if (draw_end_x >= SCREEN_WIDTH) draw_end_x = SCREEN_WIDTH - 1;
+
+    for (int stripe = draw_start_x; stripe < draw_end_x; stripe++) {
+        if (stripe < 0 || stripe >= SCREEN_WIDTH) continue;
+        f32 tex_x = (f32)(stripe - draw_start_x) / (f32)(draw_end_x - draw_start_x);
+
+        //TODO Check if the sprite is in front of the wall
+        // if (transform_y > 0 && stripe > 0 && stripe < SCREEN_WIDTH &&  transform_y < z_buffer[stripe] ) {
+        if (transform_y > 0 && stripe > 0 && stripe < SCREEN_WIDTH) {
+            for (int y = draw_start_y; y < draw_end_y; y++) {
+                if (y < 0 || y >= SCREEN_HEIGHT) continue;
+                f32 tex_y = (f32)(y - draw_start_y) / (f32)(draw_end_y - draw_start_y);
+                u32 color = get_argb_from_position(tex_x, tex_y, sprite.texture);
+
+                if ((color & 0xFFFFFFFF) != 0) {
+                pixels[y * SCREEN_WIDTH + stripe] = color;
+                }
+            }
+        }
+    }
 }
 
 void render_line(int x, int y0, int y1, u32 color, u32* pixels) {
@@ -174,11 +228,6 @@ void render(Player player, u32* pixels, SDL_Surface* map1) {
             if (y < 0 || y >= SCREEN_HEIGHT) continue;
             pixels[(y * SCREEN_WIDTH) + x] = get_argb_from_position(1 - cell_dist, (f32)(y - draw_start) / (f32)(draw_end - draw_start), map1);
         }
-        if (cell_dist < 0.01f || cell_dist > 0.99f) {
-            wall_color = 0xFF000000;
-            render_line(x, draw_start, draw_end, 0xFF000000, pixels);
-        }
-
 
         render_line(x, draw_end, SCREEN_HEIGHT, FLOOR_COLOR, pixels);
 
@@ -218,7 +267,7 @@ int main(int argc, char* argv[]) {
 
     SDL_Surface* test = IMG_Load("../assets/test.png");
 
-
+    Sprite sprite = { {5.0f, 5.0f}, .texture = IMG_Load("../assets/test_sprite.png") }; // Example sprite position
 
 
     Player player = {
@@ -261,6 +310,8 @@ int main(int argc, char* argv[]) {
         memset(pixels, 0, sizeof(u32) * SCREEN_WIDTH * SCREEN_HEIGHT);
 
         render(player, pixels, test);
+
+        render_sprites(player, pixels, sprite);
 
         SDL_UpdateTexture(texture, NULL, pixels, SCREEN_WIDTH * 4);
         SDL_RenderClear(renderer);
