@@ -33,6 +33,8 @@ u8 map[MAPSIZE_R][MAPSIZE_C] = {
     {1, 1, 1, 1, 1, 1, 1, 1}
 };
 
+f32* z_buffer;
+
 typedef struct Sprite {
     v2 position;
     SDL_Surface* texture;
@@ -40,26 +42,8 @@ typedef struct Sprite {
 
 void calculate_line_draw_start_end(i32* draw_start, i32* draw_end, f32 perpendicular_wall_dist) {
     i32 line_height = (i32)(SCREEN_HEIGHT / perpendicular_wall_dist);
-
     *draw_start = -line_height / 2 + SCREEN_HEIGHT / 2;
-
     *draw_end = line_height / 2 + SCREEN_HEIGHT / 2;
-
-    // if (*draw_end < 0) {
-    //     *draw_end = 0;
-    // }
-
-    // if (*draw_end > SCREEN_HEIGHT) {
-    //     *draw_end = SCREEN_HEIGHT;
-    // }
-
-    // if (*draw_start < 0) {
-    //     *draw_start = 0;
-    // }
-
-    // if (*draw_start > SCREEN_HEIGHT) {
-    //     *draw_start = SCREEN_HEIGHT;
-    // }
 
 }
 
@@ -112,16 +96,14 @@ void render_sprites(Player player, u32* pixels, Sprite sprite) {
         if (stripe < 0 || stripe >= SCREEN_WIDTH) continue;
         f32 tex_x = (f32)(stripe - draw_start_x) / (f32)(draw_end_x - draw_start_x);
 
-        //TODO Check if the sprite is in front of the wall
-        // if (transform_y > 0 && stripe > 0 && stripe < SCREEN_WIDTH &&  transform_y < z_buffer[stripe] ) {
-        if (transform_y > 0 && stripe > 0 && stripe < SCREEN_WIDTH) {
+        if (transform_y > 0 && stripe > 0 && stripe < SCREEN_WIDTH && transform_y < z_buffer[stripe]) {
             for (int y = draw_start_y; y < draw_end_y; y++) {
                 if (y < 0 || y >= SCREEN_HEIGHT) continue;
                 f32 tex_y = (f32)(y - draw_start_y) / (f32)(draw_end_y - draw_start_y);
                 u32 color = get_argb_from_position(tex_x, tex_y, sprite.texture);
 
                 if ((color & 0xFFFFFFFF) != 0) {
-                pixels[y * SCREEN_WIDTH + stripe] = color;
+                    pixels[y * SCREEN_WIDTH + stripe] = color;
                 }
             }
         }
@@ -230,6 +212,7 @@ void render(Player player, u32* pixels, SDL_Surface* map1) {
         }
 
         render_line(x, draw_end, SCREEN_HEIGHT, FLOOR_COLOR, pixels);
+        z_buffer[x] = perpendicular_wall_dist;
 
     }
     SDL_UnlockSurface(map1);
@@ -247,7 +230,6 @@ void rotate(Player* player, f32 angle) {
 }
 
 int main(int argc, char* argv[]) {
-
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window* window = SDL_CreateWindow("demo",
                                           SDL_WINDOWPOS_UNDEFINED,
@@ -264,6 +246,7 @@ int main(int argc, char* argv[]) {
                                              SCREEN_HEIGHT);
 
     u32* pixels = (u32*)malloc(sizeof(u32) * SCREEN_WIDTH * SCREEN_HEIGHT);
+    z_buffer = (f32*)malloc(sizeof(f32) * SCREEN_WIDTH);
 
     SDL_Surface* test = IMG_Load("../assets/test.png");
 
@@ -276,15 +259,28 @@ int main(int argc, char* argv[]) {
         .camera_plane = {0.0f, 0.66f}
     };
 
+    int fps = 0;
+    int last_time_fps = 0;
+    char buffer[32];
+
     bool running = true;
     SDL_Event event;
     while (running) {
+        fps++;
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
             case SDL_QUIT:
                 running = false;
                 break;
             }
+        }
+
+        // FPS
+        if (SDL_GetTicks() - last_time_fps > 1000) {
+            snprintf(buffer, sizeof(buffer), "FPS: %d", fps);
+            SDL_SetWindowTitle(window, buffer);
+            fps = 0;
+            last_time_fps = SDL_GetTicks();
         }
 
         const u8* keys = SDL_GetKeyboardState(NULL);
@@ -308,6 +304,7 @@ int main(int argc, char* argv[]) {
         if (player.position.y > MAPSIZE_R - 1) player.position.y = MAPSIZE_R - 1;
 
         memset(pixels, 0, sizeof(u32) * SCREEN_WIDTH * SCREEN_HEIGHT);
+        memset(z_buffer, 255, sizeof(u8) * SCREEN_WIDTH);
 
         render(player, pixels, test);
 
@@ -330,6 +327,7 @@ int main(int argc, char* argv[]) {
 
     SDL_DestroyTexture(texture);
     SDL_FreeSurface(test);
+    free(z_buffer);
     free(pixels);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
