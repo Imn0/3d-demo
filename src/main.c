@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -39,31 +40,56 @@ void calculate_line_draw_start_end(i32* draw_start, i32* draw_end, f32 perpendic
 
     *draw_end = line_height / 2 + SCREEN_HEIGHT / 2;
 
-    if (*draw_end < 0) {
-        *draw_end = 0;
-    }
+    // if (*draw_end < 0) {
+    //     *draw_end = 0;
+    // }
 
-    if (*draw_end > SCREEN_HEIGHT) {
-        *draw_end = SCREEN_HEIGHT;
-    }
+    // if (*draw_end > SCREEN_HEIGHT) {
+    //     *draw_end = SCREEN_HEIGHT;
+    // }
 
-    if (*draw_start < 0) {
-        *draw_start = 0;
-    }
+    // if (*draw_start < 0) {
+    //     *draw_start = 0;
+    // }
 
-    if (*draw_start > SCREEN_HEIGHT) {
-        *draw_start = SCREEN_HEIGHT;
-    }
+    // if (*draw_start > SCREEN_HEIGHT) {
+    //     *draw_start = SCREEN_HEIGHT;
+    // }
 
 }
 
+u32 get_argb_from_position(f32 x, f32 y, SDL_Surface* map1) {
+    //size is 256/256
+    i32 x_index = MIN((i32)(x * 256), 255);
+    i32 y_index = MIN((i32)(y * 256), 255);
+
+    SDL_PixelFormat* pixelFormat = map1->format;
+
+    i32 pixelIndex = (y_index * map1->pitch) + (x_index * pixelFormat->BytesPerPixel);
+
+    u8* _pixels = (u8*)map1->pixels;
+
+    u8 red, green, blue;
+    SDL_GetRGB(*(u32*)(_pixels + pixelIndex), pixelFormat, &red, &green, &blue);
+    return (0xFF << 24) | (red << 16) | (green << 8) | blue;
+}
+
 void render_line(int x, int y0, int y1, u32 color, u32* pixels) {
+    if (y0 < 0) y0 = 0;
+    if (y0 > SCREEN_HEIGHT) y0 = SCREEN_HEIGHT;
+    if (y1 < 0) y1 = 0;
+    if (y1 > SCREEN_HEIGHT) y1 = SCREEN_HEIGHT;
+
+
     for (int y = y0; y < y1; y++) {
         pixels[(y * SCREEN_WIDTH) + x] = color;
     }
 }
 
-void render(Player player, u32* pixels) {
+void render(Player player, u32* pixels, SDL_Surface* map1) {
+
+    SDL_LockSurface(map1);
+
     for (int x = 0; x < SCREEN_WIDTH; x++) {
         f32 cameara_x = 2 * (x / (f32)SCREEN_WIDTH) - 1;
 
@@ -141,15 +167,23 @@ void render(Player player, u32* pixels) {
 
         u32 wall_color = (side == 1) ? 0xFFFF0000 : 0xFF771010;
 
-        if (cell_dist < 0.05f || cell_dist > 0.95f) {
-            wall_color = 0xFF000000;
-        }
 
         render_line(x, 0, draw_start, CELLING_COLOR, pixels);
-        render_line(x, draw_start, draw_end, wall_color, pixels);
+
+        for (int y = draw_start; y < draw_end; y++) {
+            if (y < 0 || y >= SCREEN_HEIGHT) continue;
+            pixels[(y * SCREEN_WIDTH) + x] = get_argb_from_position(1 - cell_dist, (f32)(y - draw_start) / (f32)(draw_end - draw_start), map1);
+        }
+        if (cell_dist < 0.01f || cell_dist > 0.99f) {
+            wall_color = 0xFF000000;
+            render_line(x, draw_start, draw_end, 0xFF000000, pixels);
+        }
+
+
         render_line(x, draw_end, SCREEN_HEIGHT, FLOOR_COLOR, pixels);
 
     }
+    SDL_UnlockSurface(map1);
 }
 
 void rotate(Player* player, f32 angle) {
@@ -181,6 +215,10 @@ int main(int argc, char* argv[]) {
                                              SCREEN_HEIGHT);
 
     u32* pixels = (u32*)malloc(sizeof(u32) * SCREEN_WIDTH * SCREEN_HEIGHT);
+
+    SDL_Surface* test = IMG_Load("../assets/test.png");
+
+
 
 
     Player player = {
@@ -222,7 +260,7 @@ int main(int argc, char* argv[]) {
 
         memset(pixels, 0, sizeof(u32) * SCREEN_WIDTH * SCREEN_HEIGHT);
 
-        render(player, pixels);
+        render(player, pixels, test);
 
         SDL_UpdateTexture(texture, NULL, pixels, SCREEN_WIDTH * 4);
         SDL_RenderClear(renderer);
@@ -240,6 +278,7 @@ int main(int argc, char* argv[]) {
     }
 
     SDL_DestroyTexture(texture);
+    SDL_FreeSurface(test);
     free(pixels);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

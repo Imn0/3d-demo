@@ -19,6 +19,5 @@ typedef struct _v2_f32 {f32 x; f32 y;} v2;
 typedef struct _v2_i32 {i32 x; i32 y;} v2i;
 
 
-#define dot(v0, v1) \
-
-
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
