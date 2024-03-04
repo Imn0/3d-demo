@@ -7,8 +7,14 @@
 
 #include "utils.h"
 
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 600
+// #define SCREEN_WIDTH 800
+// #define SCREEN_HEIGHT 600
+
+
+#define SCREEN_WIDTH 565
+#define SCREEN_HEIGHT 435
+
+
 #define TARGET_DELAY_MS 16
 #define MAPSIZE_R 8
 #define MAPSIZE_C 8
@@ -75,30 +81,37 @@ void render_sprites(Player player, u32* pixels, Sprite sprite) {
     f32 transform_y = inv_det * (-player.camera_plane.y * sprite_x + player.camera_plane.x * sprite_y);
 
     // calculate screen position of the sprite
-    int sprite_screen_x = (int)((SCREEN_WIDTH / 2) * (1 + transform_x / transform_y));
+    i32 sprite_screen_x = (i32)((SCREEN_WIDTH / 2) * (1 + transform_x / transform_y));
 
     // calculate height and width of the sprite
-    int sprite_height = abs((int)(SCREEN_HEIGHT / transform_y));
-    int sprite_width = abs((int)(SCREEN_HEIGHT / transform_y));
+    i32 sprite_height = abs((i32)(SCREEN_HEIGHT / transform_y));
+    i32 sprite_width = abs((i32)(SCREEN_HEIGHT / transform_y));
 
     // calculate start and end points for drawing the sprite
-    int draw_start_y = -sprite_height / 2 + SCREEN_HEIGHT / 2;
-    // if (draw_start_y < 0) draw_start_y = 0;
-    int draw_end_y = sprite_height / 2 + SCREEN_HEIGHT / 2;
-    // if (draw_end_y >= SCREEN_HEIGHT) draw_end_y = SCREEN_HEIGHT - 1;
+    i32 draw_start_y = -sprite_height / 2 + SCREEN_HEIGHT / 2;
+    i32 draw_end_y = sprite_height / 2 + SCREEN_HEIGHT / 2;
 
-    int draw_start_x = -sprite_width / 2 + sprite_screen_x;
-    // if (draw_start_x < 0) draw_start_x = 0;
-    int draw_end_x = sprite_width / 2 + sprite_screen_x;
-    // if (draw_end_x >= SCREEN_WIDTH) draw_end_x = SCREEN_WIDTH - 1;
+    i32 draw_start_x = -sprite_width / 2 + sprite_screen_x;
+    i32 draw_end_x = sprite_width / 2 + sprite_screen_x;
 
-    for (int stripe = draw_start_x; stripe < draw_end_x; stripe++) {
-        if (stripe < 0 || stripe >= SCREEN_WIDTH) continue;
+
+    i32 actual_draw_start_x = CLIP(draw_start_x, 0, SCREEN_WIDTH);
+    i32 actual_draw_end_x = CLIP(draw_end_x, 0, SCREEN_WIDTH);
+
+    for (i32 stripe = actual_draw_start_x; stripe < actual_draw_end_x; stripe++) {
+
+
+        //!this
         f32 tex_x = (f32)(stripe - draw_start_x) / (f32)(draw_end_x - draw_start_x);
 
         if (transform_y > 0 && stripe > 0 && stripe < SCREEN_WIDTH && transform_y < z_buffer[stripe]) {
-            for (int y = draw_start_y; y < draw_end_y; y++) {
-                if (y < 0 || y >= SCREEN_HEIGHT) continue;
+
+            i32 actual_draw_start_y = CLIP(draw_start_y, 0, SCREEN_HEIGHT);
+            i32 actual_draw_end_y = CLIP(draw_end_y, 0, SCREEN_HEIGHT);
+
+            for (i32 y = actual_draw_start_y; y < actual_draw_end_y; y++) {
+
+                //!this
                 f32 tex_y = (f32)(y - draw_start_y) / (f32)(draw_end_y - draw_start_y);
                 u32 color = get_argb_from_position(tex_x, tex_y, sprite.texture);
 
@@ -110,14 +123,14 @@ void render_sprites(Player player, u32* pixels, Sprite sprite) {
     }
 }
 
-void render_line(int x, int y0, int y1, u32 color, u32* pixels) {
+void render_line(i32 x, i32 y0, i32 y1, u32 color, u32* pixels) {
     if (y0 < 0) y0 = 0;
     if (y0 > SCREEN_HEIGHT) y0 = SCREEN_HEIGHT;
     if (y1 < 0) y1 = 0;
     if (y1 > SCREEN_HEIGHT) y1 = SCREEN_HEIGHT;
 
 
-    for (int y = y0; y < y1; y++) {
+    for (i32 y = y0; y < y1; y++) {
         pixels[(y * SCREEN_WIDTH) + x] = color;
     }
 }
@@ -126,7 +139,7 @@ void render(Player player, u32* pixels, SDL_Surface* map1) {
 
     SDL_LockSurface(map1);
 
-    for (int x = 0; x < SCREEN_WIDTH; x++) {
+    for (i32 x = 0; x < SCREEN_WIDTH; x++) {
         f32 cameara_x = 2 * (x / (f32)SCREEN_WIDTH) - 1;
 
         const v2 ray_dir = {
@@ -140,6 +153,7 @@ void render(Player player, u32* pixels, SDL_Surface* map1) {
         v2 side_dist;
         v2 delta_dist = { fabsf(1 / ray_dir.x), fabsf(1 / ray_dir.y) };
         v2 step;
+
         if (ray_dir.x < 0) {
             step.x = -1;
             side_dist.x = (player.position.x - map_pos.x) * delta_dist.x;
@@ -159,7 +173,7 @@ void render(Player player, u32* pixels, SDL_Surface* map1) {
 
         // DDA
         bool hit = false;
-        int side;
+        i32 side;
         while (!hit) {
             if (side_dist.x < side_dist.y) {
                 side_dist.x += delta_dist.x;
@@ -200,15 +214,19 @@ void render(Player player, u32* pixels, SDL_Surface* map1) {
         i32 draw_start, draw_end;
         calculate_line_draw_start_end(&draw_start, &draw_end, perpendicular_wall_dist);
 
-
-        u32 wall_color = (side == 1) ? 0xFFFF0000 : 0xFF771010;
-
-
         render_line(x, 0, draw_start, CELLING_COLOR, pixels);
 
-        for (int y = draw_start; y < draw_end; y++) {
-            if (y < 0 || y >= SCREEN_HEIGHT) continue;
-            pixels[(y * SCREEN_WIDTH) + x] = get_argb_from_position(1 - cell_dist, (f32)(y - draw_start) / (f32)(draw_end - draw_start), map1);
+        f32 total_distance = (f32)(draw_end - draw_start);
+
+        i32 actual_start = CLIP(draw_start, 0, SCREEN_HEIGHT);
+        i32 actual_end = CLIP(draw_end, 0, SCREEN_HEIGHT);
+
+        for (i32 y = actual_start; y < actual_end; y++) {
+            //! this
+            pixels[(y * SCREEN_WIDTH) + x]
+                = get_argb_from_position(cell_dist,
+                                         (f32)(y - draw_start) / (f32)(draw_end - draw_start),
+                                         map1);
         }
 
         render_line(x, draw_end, SCREEN_HEIGHT, FLOOR_COLOR, pixels);
@@ -229,7 +247,7 @@ void rotate(Player* player, f32 angle) {
     player->camera_plane.y = old_camera_plane.x * sinf(angle) + old_camera_plane.y * cosf(angle);
 }
 
-int main(int argc, char* argv[]) {
+i32 main(i32 argc, char* argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window* window = SDL_CreateWindow("demo",
                                           SDL_WINDOWPOS_UNDEFINED,
@@ -238,7 +256,7 @@ int main(int argc, char* argv[]) {
                                           720,
                                           SDL_WINDOW_ALLOW_HIGHDPI);
 
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
     SDL_Texture* texture = SDL_CreateTexture(renderer,
                                              SDL_PIXELFORMAT_ARGB8888,
                                              SDL_TEXTUREACCESS_STREAMING,
@@ -259,8 +277,8 @@ int main(int argc, char* argv[]) {
         .camera_plane = {0.0f, 0.66f}
     };
 
-    int fps = 0;
-    int last_time_fps = 0;
+    i32 fps = 0;
+    i32 last_time_fps = 0;
     char buffer[32];
 
     bool running = true;

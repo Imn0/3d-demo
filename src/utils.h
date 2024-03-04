@@ -21,3 +21,5 @@ typedef struct _v2_i32 {i32 x; i32 y;} v2i;
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define CLIP(x, min, max)   (((x) < (min)) ? (min) : \
+                            (((x) > (max)) ? (max) : (x)))
