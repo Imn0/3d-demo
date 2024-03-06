@@ -1,8 +1,9 @@
-CC = clang
-CFLAGS = -std=c17 -O2 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing
-CFLAGS += -Wno-pointer-arith -Wno-newline-eof -Wno-unused-parameter -Wno-gnu-statement-expression -Wno-int-conversion
-CFLAGS += -Wno-gnu-compound-literal-initializer -Wno-gnu-zero-variadic-macro-arguments
-CFLAGS +=  -fbracket-depth=1024
+CC = gcc
+CFLAGS = -std=c17 -O2 -Wall -Wextra -Wpedantic -Wstrict-aliasing
+CFLAGS = -g 
+# CFLAGS = -ggdb3 
+CFLAGS += -Wno-pointer-arith -Wno-unused-parameter -Wno-int-conversion
+# CFLAGS +=  -fbracket-depth=1024
 LDFLAGS = -lm -lSDL2main -lSDL2 -lSDL2_mixer -lSDL2_image -lSDL2_ttf
 
 SRC  = $(wildcard src/**/*.c) $(wildcard src/*.c) $(wildcard src/**/**/*.c) $(wildcard src/**/**/**/*.c)
@@ -27,5 +28,6 @@ $(OBJDIR)/%.o: src/%.c
 	$(CC) -o $@ -c $< $(CFLAGS)
 
 clean:
-	rm -rf $(BIN) $(OBJDIR)
+	rm -rf $(OBJDIR)
+	rm $(BIN)/3d-demo
 

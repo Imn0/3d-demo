@@ -12,5 +12,6 @@ typedef struct{
     SDL_Surface* texture;
 }Entity;
 
+void update_entities(LinkedList* entities);
 void render_entity(Entity* entity, Player* player);
-void update_entiy(Entity* entity);
+bool update_entiy(Entity* entity);

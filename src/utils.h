@@ -8,11 +8,11 @@
 // #define SCREEN_WIDTH 800
 // #define SCREEN_HEIGHT 600
 
-#define SCREEN_WIDTH 565
-#define SCREEN_HEIGHT 435
+#define SCREEN_WIDTH 365
+#define SCREEN_HEIGHT 235
 
 #define TARGET_DELAY_MS 16
-#define MAPSIZE_R 8
+#define MAPSIZE_R 12
 #define MAPSIZE_C 8
 
 #define CELLING_COLOR 0xFF202020
@@ -37,6 +37,7 @@ typedef struct _v2_i32 { i32 x; i32 y; } v2i;
 typedef struct Node {
     void* data;
     struct Node* next;
+    struct Node* prev;
     void (*dtor)(void*);
 } Node;
 
@@ -74,4 +75,5 @@ i32 ll_remove_cirlce(LinkedList* list);
 ListItr* ll_itr_assign(LinkedList* list);
 i32 ll_itr_next(ListItr* itr);
 void* ll_itr_get(ListItr* itr);
+void* ll_itr_pop_current(ListItr *itr);
 bool ll_itr_has_next(ListItr* itr);

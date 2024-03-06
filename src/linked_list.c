@@ -38,6 +38,7 @@ i32 ll_push_front_dtor(LinkedList* list, void* data, void (*dtor)(void*)) {
 
     new_node->data = data;
     new_node->next = list->head;
+    new_node->prev = NULL;
     new_node->dtor = dtor;
 
     list->head = new_node;
@@ -69,6 +70,7 @@ i32 ll_push_back_dtor(LinkedList* list, void* data, void (*dtor)(void*)) {
     new_node->dtor = dtor;
 
     if (list->tail != NULL) {
+        new_node->prev = list->tail;
         list->tail->next = new_node;
     }
     list->tail = new_node;
@@ -90,6 +92,7 @@ void* ll_pop_front(LinkedList* list) {
     Node* old_head = list->head;
     void* data = old_head->data;
     list->head = old_head->next;
+    list->head->prev = NULL;
     if (list->head == NULL) {
         list->tail = NULL;
     }
@@ -254,8 +257,39 @@ i32 ll_itr_next(ListItr* itr) {
 
 void* ll_itr_get(ListItr* itr) {
     assert(itr != NULL);
+    if(itr->current != NULL){
+        printf("getting %p\n", itr->current);
+        return itr->current->data;
+    }
+    return NULL;
+}
+
+void* ll_itr_pop_current(ListItr* itr) {
+    assert(itr != NULL);
     assert(itr->current != NULL);
-    return itr->current->data;
+
+    void* data = itr->current->data;
+    Node* node_to_remove = itr->current;
+
+    if (node_to_remove == itr->list->head) {
+        itr->list->head = itr->current->next;
+        if (itr->list->head != NULL) {
+            itr->list->head->prev = NULL;
+        }
+    } else {
+        node_to_remove->prev->next = node_to_remove->next;
+    }
+
+    if (node_to_remove == itr->list->tail) {
+        itr->list->tail = itr->current->prev;
+        if (itr->list->tail != NULL) {
+            itr->list->tail->next = NULL;
+        }
+    } else {
+        node_to_remove->next->prev = node_to_remove->prev;
+    }
+    free(node_to_remove);
+    return data;
 }
 
 bool ll_itr_has_next(ListItr* itr) {

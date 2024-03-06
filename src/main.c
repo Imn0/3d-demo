@@ -10,9 +10,17 @@
 #include "render.h"
 #include "entity.h"
 
+
+
+
+
 u8 map[MAPSIZE_R][MAPSIZE_C] = {
     {1, 1, 1, 1, 1, 1, 1, 1},
     {1, 0, 0, 0, 0, 0, 0, 1},
+    {1, 0, 0, 0, 0, 0, 0, 1},
+    {1, 0, 0, 0, 0, 0, 0, 1},
+    {1, 0, 0, 0, 1, 0, 0, 1},
+    {1, 0, 0, 1, 1, 0, 0, 1},
     {1, 0, 0, 0, 0, 0, 0, 1},
     {1, 0, 0, 0, 0, 0, 0, 1},
     {1, 0, 0, 0, 0, 0, 0, 1},
@@ -45,7 +53,7 @@ i32 main(i32 argc, char* argv[]) {
     z_buffer = (f32*)malloc(sizeof(f32) * SCREEN_WIDTH);
 
     SDL_Surface* test = IMG_Load("../assets/test.png");
-    SDL_Surface* test_sprite = IMG_Load("../assets/test_sprite.png");
+    SDL_Surface* test_sprite = IMG_Load("../assets/bullet.png");
 
     Player player = {
         .position = {2.0f, 2.0f},
@@ -74,7 +82,7 @@ i32 main(i32 argc, char* argv[]) {
 
         // FPS
         if (SDL_GetTicks() - last_time_fps > 1000) {
-            snprintf(buffer, sizeof(buffer), "FPS: %d", fps);
+            snprintf(buffer, sizeof(buffer), "demo [%d]", fps);
             SDL_SetWindowTitle(window, buffer);
             fps = 0;
             last_time_fps = SDL_GetTicks();
@@ -85,17 +93,18 @@ i32 main(i32 argc, char* argv[]) {
 
 
         //TODO
-        if (SDL_GetTicks() - last_shoot > 400 && keys[SDL_SCANCODE_SPACE]) {
-            Entity* bullet = (Entity*)malloc(sizeof(Entity)); 
-            bullet->position = (v2){player.position.x, player.position.y};
+        if (SDL_GetTicks() - last_shoot > 40 && keys[SDL_SCANCODE_SPACE]) {
+            Entity* bullet = (Entity*)malloc(sizeof(Entity));
+            bullet->position = (v2){ player.position.x, player.position.y };
             bullet->texture = test_sprite;
+            bullet->velocity = (v2){ player.direction.x * 0.02f, player.direction.y * 0.02f };
             ll_push_back(entities, bullet);
             last_shoot = SDL_GetTicks();
         }
 
         memset(pixels, 0, sizeof(u32) * SCREEN_WIDTH * SCREEN_HEIGHT);
         memset(z_buffer, 255, sizeof(u8) * SCREEN_WIDTH);
-
+        update_entities(entities);
         render(player, test, entities);
 
         SDL_RenderClear(renderer);
@@ -120,6 +129,7 @@ i32 main(i32 argc, char* argv[]) {
     free(pixels);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
+    SDL_VideoQuit();
     SDL_Quit();
     return 0;
 
