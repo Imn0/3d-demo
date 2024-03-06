@@ -8,13 +8,14 @@
 #include "utils.h"
 #include "player.h"
 #include "render.h"
+#include "entity.h"
 
 u8 map[MAPSIZE_R][MAPSIZE_C] = {
     {1, 1, 1, 1, 1, 1, 1, 1},
     {1, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 0, 1, 0, 0, 0, 1},
-    {1, 0, 0, 1, 0, 0, 0, 1},
-    {1, 0, 0, 0, 1, 0, 0, 1},
+    {1, 0, 0, 0, 0, 0, 0, 1},
+    {1, 0, 0, 0, 0, 0, 0, 1},
+    {1, 0, 0, 0, 0, 0, 0, 1},
     {1, 0, 0, 0, 0, 0, 0, 1},
     {1, 0, 0, 0, 0, 0, 0, 1},
     {1, 1, 1, 1, 1, 1, 1, 1}
@@ -23,66 +24,6 @@ u8 map[MAPSIZE_R][MAPSIZE_C] = {
 f32* z_buffer;
 u32* pixels;
 
-typedef struct Sprite {
-    v2 position;
-    SDL_Surface* texture;
-} Sprite;
-
-//TODO 
-/*
-void render_sprite(Player player, u32* pixels, Sprite sprite) {
-    // sprite position relative to the player
-    f32 sprite_x = sprite.position.x - player.position.x;
-    f32 sprite_y = sprite.position.y - player.position.y;
-
-    // transform sprite with the inverse camera matrix
-    f32 inv_det = 1.0 / (player.camera_plane.x * player.direction.y - player.direction.x * player.camera_plane.y);
-    f32 transform_x = inv_det * (player.direction.y * sprite_x - player.direction.x * sprite_y);
-    f32 transform_y = inv_det * (-player.camera_plane.y * sprite_x + player.camera_plane.x * sprite_y);
-
-    // calculate screen position of the sprite
-    i32 sprite_screen_x = (i32)((SCREEN_WIDTH / 2) * (1 + transform_x / transform_y));
-
-    // calculate height and width of the sprite
-    i32 sprite_height = abs((i32)(SCREEN_HEIGHT / transform_y));
-    i32 sprite_width = abs((i32)(SCREEN_HEIGHT / transform_y));
-
-    // calculate start and end points for drawing the sprite
-    i32 draw_start_y = -sprite_height / 2 + SCREEN_HEIGHT / 2;
-    i32 draw_end_y = sprite_height / 2 + SCREEN_HEIGHT / 2;
-
-    i32 draw_start_x = -sprite_width / 2 + sprite_screen_x;
-    i32 draw_end_x = sprite_width / 2 + sprite_screen_x;
-
-
-    i32 actual_draw_start_x = CLIP(draw_start_x, 0, SCREEN_WIDTH);
-    i32 actual_draw_end_x = CLIP(draw_end_x, 0, SCREEN_WIDTH);
-
-    for (i32 stripe = actual_draw_start_x; stripe < actual_draw_end_x; stripe++) {
-
-
-        //!this
-        f32 tex_x = (f32)(stripe - draw_start_x) / (f32)(draw_end_x - draw_start_x);
-
-        if (transform_y > 0 && stripe > 0 && stripe < SCREEN_WIDTH && transform_y < z_buffer[stripe]) {
-
-            i32 actual_draw_start_y = CLIP(draw_start_y, 0, SCREEN_HEIGHT);
-            i32 actual_draw_end_y = CLIP(draw_end_y, 0, SCREEN_HEIGHT);
-
-            for (i32 y = actual_draw_start_y; y < actual_draw_end_y; y++) {
-
-                //!this
-                f32 tex_y = (f32)(y - draw_start_y) / (f32)(draw_end_y - draw_start_y);
-                u32 color = get_argb_from_position(tex_x, tex_y, sprite.texture);
-
-                if ((color & 0xFFFFFFFF) != 0) {
-                    pixels[y * SCREEN_WIDTH + stripe] = color;
-                }
-            }
-        }
-    }
-}
-*/
 
 i32 main(i32 argc, char* argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
@@ -104,9 +45,7 @@ i32 main(i32 argc, char* argv[]) {
     z_buffer = (f32*)malloc(sizeof(f32) * SCREEN_WIDTH);
 
     SDL_Surface* test = IMG_Load("../assets/test.png");
-
-    // Sprite sprite = { {5.0f, 5.0f}, .texture = IMG_Load("../assets/test_sprite.png") }; // Example sprite position
-
+    SDL_Surface* test_sprite = IMG_Load("../assets/test_sprite.png");
 
     Player player = {
         .position = {2.0f, 2.0f},
@@ -114,6 +53,9 @@ i32 main(i32 argc, char* argv[]) {
         .camera_plane = {0.0f, 0.66f}
     };
 
+    LinkedList* entities = ll_init();
+
+    u32 last_shoot = -1;
     i32 fps = 0;
     i32 last_time_fps = 0;
     char buffer[32];
@@ -140,14 +82,21 @@ i32 main(i32 argc, char* argv[]) {
 
         const u8* keys = SDL_GetKeyboardState(NULL);
         move_player(&player, keys);
-        
+
+
+        //TODO
+        if (SDL_GetTicks() - last_shoot > 400 && keys[SDL_SCANCODE_SPACE]) {
+            Entity* bullet = (Entity*)malloc(sizeof(Entity)); 
+            bullet->position = (v2){player.position.x, player.position.y};
+            bullet->texture = test_sprite;
+            ll_push_back(entities, bullet);
+            last_shoot = SDL_GetTicks();
+        }
 
         memset(pixels, 0, sizeof(u32) * SCREEN_WIDTH * SCREEN_HEIGHT);
         memset(z_buffer, 255, sizeof(u8) * SCREEN_WIDTH);
 
-        render(player, test);
-
-        // render_sprite(player, pixels, sprite);
+        render(player, test, entities);
 
         SDL_RenderClear(renderer);
         SDL_UpdateTexture(texture, NULL, pixels, SCREEN_WIDTH * 4);
@@ -166,6 +115,7 @@ i32 main(i32 argc, char* argv[]) {
 
     SDL_DestroyTexture(texture);
     SDL_FreeSurface(test);
+    SDL_FreeSurface(test_sprite);
     free(z_buffer);
     free(pixels);
     SDL_DestroyRenderer(renderer);

@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-i32 ll_init(LinkedList* list) {
+LinkedList* ll_init() {
     i32 result = 0;
 
     LinkedList* new_list = (LinkedList*)calloc(1, sizeof(LinkedList));
@@ -16,13 +16,11 @@ i32 ll_init(LinkedList* list) {
     new_list->tail = NULL;
     new_list->is_circle = false;
 
-    *list = *new_list;
-    return result;
-
+    return new_list;
 
 fail:
     ll_destroy(new_list);
-    return result;
+    return NULL;
 }
 
 i32 ll_push_front(LinkedList* list, void* data) {
@@ -231,8 +229,7 @@ i32 ll_remove_cirlce(LinkedList* list) {
     return 0;
 }
 
-i32 ll_itr_assign(ListItr** itr, LinkedList* list) {
-    assert(itr != NULL);
+ListItr* ll_itr_assign(LinkedList* list) {
     assert(list != NULL);
 
     ListItr* new_itr = (ListItr*)calloc(1, sizeof(ListItr));
@@ -241,18 +238,16 @@ i32 ll_itr_assign(ListItr** itr, LinkedList* list) {
     }
     new_itr->list = list;
     new_itr->current = list->head;
-    *itr = new_itr;
 
-    return 0;
-
+    return new_itr;
 }
 
-i32 ll_itr_next(ListItr** itr) {
+i32 ll_itr_next(ListItr* itr) {
     assert(itr != NULL);
 
-    (*itr)->current = (*itr)->current->next;
-    if ((*itr)->current == NULL && (*itr)->list->is_circle) {
-        (*itr)->current = (*itr)->list->head;
+    itr->current = itr->current->next;
+    if (itr->current == NULL && itr->list->is_circle) {
+        itr->current = itr->list->head;
     }
     return 0;
 }

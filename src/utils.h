@@ -8,10 +8,8 @@
 // #define SCREEN_WIDTH 800
 // #define SCREEN_HEIGHT 600
 
-
 #define SCREEN_WIDTH 565
 #define SCREEN_HEIGHT 435
-
 
 #define TARGET_DELAY_MS 16
 #define MAPSIZE_R 8
@@ -19,9 +17,6 @@
 
 #define CELLING_COLOR 0xFF202020
 #define FLOOR_COLOR 0xFF303030
-
-
-
 
 typedef int8_t i8;
 typedef uint8_t u8;
@@ -36,10 +31,8 @@ typedef double f64;
 typedef size_t usize;
 typedef ssize_t isize;
 
-
 typedef struct _v2_f32 { f32 x; f32 y; } v2;
 typedef struct _v2_i32 { i32 x; i32 y; } v2i;
-
 
 typedef struct Node {
     void* data;
@@ -63,8 +56,7 @@ typedef struct ListItr {
 #define CLIP(x, min, max)   (((x) < (min)) ? (min) : \
                             (((x) > (max)) ? (max) : (x)))
 
-
-i32 ll_init(LinkedList* list);
+LinkedList* ll_init();
 i32 ll_push_front(LinkedList* list, void* data);
 i32 ll_push_front_dtor(LinkedList* list, void* data, void (*dtor)(void*));
 i32 ll_push_back(LinkedList* list, void* data);
@@ -79,8 +71,7 @@ i32 ll_insert(LinkedList* list, void* data, usize index);
 i32 ll_make_circle(LinkedList* list);
 i32 ll_remove_cirlce(LinkedList* list);
 
-
-i32 ll_itr_assign(ListItr** itr, LinkedList* list);
-i32 ll_itr_next(ListItr** itr);
+ListItr* ll_itr_assign(LinkedList* list);
+i32 ll_itr_next(ListItr* itr);
 void* ll_itr_get(ListItr* itr);
 bool ll_itr_has_next(ListItr* itr);

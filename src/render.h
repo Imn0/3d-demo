@@ -5,4 +5,4 @@
 #include <SDL2/SDL.h>
 
 
-void render(Player player, SDL_Surface* map1);
+void render(Player player, SDL_Surface* map1, LinkedList* entities);

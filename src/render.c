@@ -1,4 +1,5 @@
 #include "render.h"
+#include "entity.h"
 
 extern u8 map[MAPSIZE_R][MAPSIZE_C];
 extern f32* z_buffer;
@@ -12,9 +13,8 @@ void calculate_line_draw_start_end(i32* draw_start, i32* draw_end, f32 perpendic
 }
 
 u32 get_argb_from_position(f32 x, f32 y, SDL_Surface* map1) {
-    //size is 256/256
-    i32 x_index = MIN((i32)(x * 256), 255);
-    i32 y_index = MIN((i32)(y * 256), 255);
+    i32 x_index = MIN((i32)(x * map1->w), map1->w);
+    i32 y_index = MIN((i32)(y * map1->h), map1->h);
 
     SDL_PixelFormat* pixelFormat = map1->format;
 
@@ -40,7 +40,7 @@ void render_line(i32 x, i32 y0, i32 y1, u32 color) {
 }
 
 
-void render(Player player, SDL_Surface* map1) {
+void render(Player player, SDL_Surface* map1, LinkedList* entities) {
 
     SDL_LockSurface(map1);
 
@@ -121,17 +121,28 @@ void render(Player player, SDL_Surface* map1) {
 
         render_line(x, 0, draw_start, CELLING_COLOR);
 
-        f32 total_distance = (f32)(draw_end - draw_start);
-
         i32 actual_start = CLIP(draw_start, 0, SCREEN_HEIGHT);
         i32 actual_end = CLIP(draw_end, 0, SCREEN_HEIGHT);
 
         for (i32 y = actual_start; y < actual_end; y++) {
+
+            u32 color = get_argb_from_position(cell_dist,
+                                               (f32)(y - draw_start) / (f32)(draw_end - draw_start),
+                                               map1);
+
+            if (side == 1) {
+                u32
+                    r = ((color & 0x00FF0000) * 0x90) >> 8,
+                    g = ((color & 0x0000FF00) * 0x90) >> 8,
+                    b = ((color & 0x000000FF) * 0x90) >> 8;
+
+                color = 0xFF000000 | (r & 0xFF0000) | (g & 0x00FF00) | (b & 0x0000FF);
+            }
+
+
             //! this
-            pixels[(y * SCREEN_WIDTH) + x]
-                = get_argb_from_position(cell_dist,
-                                         (f32)(y - draw_start) / (f32)(draw_end - draw_start),
-                                         map1);
+            pixels[(y * SCREEN_WIDTH) + x] = color;
+
         }
 
         render_line(x, draw_end, SCREEN_HEIGHT, FLOOR_COLOR);
@@ -139,6 +150,70 @@ void render(Player player, SDL_Surface* map1) {
 
     }
     SDL_UnlockSurface(map1);
+    if (entities == NULL) { return; }
+
+    ListItr* itr = ll_itr_assign(entities);
+
+    while (ll_itr_has_next(itr)) {
+        render_entity((Entity*)ll_itr_get(itr), &player);
+        ll_itr_next(itr);
+    }
+    free(itr);
+
 }
 
 
+
+void render_entity(Entity* entity, Player* player) {
+
+    // sprite position relative to the player
+    f32 sprite_x = entity->position.x - player->position.x;
+    f32 sprite_y = entity->position.y - player->position.y;
+
+    // transform sprite with the inverse camera matrix
+    f32 inv_det = 1.0 / (player->camera_plane.x * player->direction.y - player->direction.x * player->camera_plane.y);
+    f32 transform_x = inv_det * (player->direction.y * sprite_x - player->direction.x * sprite_y);
+    f32 transform_y = inv_det * (-player->camera_plane.y * sprite_x + player->camera_plane.x * sprite_y);
+
+    // calculate screen position of the sprite
+    i32 sprite_screen_x = (i32)((SCREEN_WIDTH / 2) * (1 + transform_x / transform_y));
+
+    // calculate height and width of the sprite
+    i32 sprite_height = abs((i32)(SCREEN_HEIGHT / transform_y));
+    i32 sprite_width = abs((i32)(SCREEN_HEIGHT / transform_y));
+
+    // calculate start and end points for drawing the sprite
+    i32 draw_start_y = -sprite_height / 2 + SCREEN_HEIGHT / 2;
+    i32 draw_end_y = sprite_height / 2 + SCREEN_HEIGHT / 2;
+
+    i32 draw_start_x = -sprite_width / 2 + sprite_screen_x;
+    i32 draw_end_x = sprite_width / 2 + sprite_screen_x;
+
+
+    i32 actual_draw_start_x = CLIP(draw_start_x, 0, SCREEN_WIDTH);
+    i32 actual_draw_end_x = CLIP(draw_end_x, 0, SCREEN_WIDTH);
+
+    for (i32 stripe = actual_draw_start_x; stripe < actual_draw_end_x; stripe++) {
+
+
+        //!this
+        f32 tex_x = (f32)(stripe - draw_start_x) / (f32)(draw_end_x - draw_start_x);
+
+        if (transform_y > 0 && stripe > 0 && stripe < SCREEN_WIDTH && transform_y < z_buffer[stripe]) {
+            i32 actual_draw_start_y = CLIP(draw_start_y, 0, SCREEN_HEIGHT);
+            i32 actual_draw_end_y = CLIP(draw_end_y, 0, SCREEN_HEIGHT);
+
+            for (i32 y = actual_draw_start_y; y < actual_draw_end_y; y++) {
+
+                //!this
+                f32 tex_y = (f32)(y - draw_start_y) / (f32)(draw_end_y - draw_start_y);
+                u32 color = get_argb_from_position(tex_x, tex_y, entity->texture);
+
+                if ((color & 0xFFFFFFFF) != 0) {
+                    z_buffer[stripe] = transform_y;
+                    pixels[y * SCREEN_WIDTH + stripe] = color;
+                }
+            }
+        }
+    }
+}

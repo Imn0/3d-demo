@@ -35,7 +35,6 @@ void move_player(Player* player, const u8* keys) {
         pos_delta.y = -player->direction.y * 0.01f;
     }
 
-
     // check collisions
     if (map[(i32)(player->position.y)][(i32)(player->position.x + pos_delta.x)] != 0) {
         pos_delta.x = 0.0f;
