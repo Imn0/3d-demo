@@ -4,10 +4,6 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
-
-// #define SCREEN_WIDTH 800
-// #define SCREEN_HEIGHT 600
-
 #define SCREEN_WIDTH 365
 #define SCREEN_HEIGHT 235
 
@@ -44,36 +40,23 @@ typedef struct Node {
 typedef struct LinkedList {
     Node* head;
     Node* tail;
-    bool is_circle;
+    Node* itr;
+    int size;
 } LinkedList;
 
-typedef struct ListItr {
-    LinkedList* list;
-    Node* current;
-} ListItr;
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define CLIP(x, min, max)   (((x) < (min)) ? (min) : \
                             (((x) > (max)) ? (max) : (x)))
 
-LinkedList* ll_init();
-i32 ll_push_front(LinkedList* list, void* data);
-i32 ll_push_front_dtor(LinkedList* list, void* data, void (*dtor)(void*));
-i32 ll_push_back(LinkedList* list, void* data);
-i32 ll_push_back_dtor(LinkedList* list, void* data, void (*dtor)(void*));
-void* ll_pop_front(LinkedList* list);
-void* ll_pop_back(LinkedList* list);
-void* ll_get(LinkedList* list, usize index);
-void* ll_remove(LinkedList* list, usize index);
-i32 ll_print(LinkedList* list, void (*printFunc)(void*));
-i32 ll_destroy(LinkedList* list);
-i32 ll_insert(LinkedList* list, void* data, usize index);
-i32 ll_make_circle(LinkedList* list);
-i32 ll_remove_cirlce(LinkedList* list);
+LinkedList* ll_create();
+void ll_append(LinkedList *list, void *data);
+void ll_init_iterator(LinkedList *list);
+void ll_free_linked_list(LinkedList *list);
+void* ll_itr_get_current(LinkedList *list);
+void ll_itr_next(LinkedList *list);
+bool ll_itr_has_current(LinkedList *list);
 
-ListItr* ll_itr_assign(LinkedList* list);
-i32 ll_itr_next(ListItr* itr);
-void* ll_itr_get(ListItr* itr);
-void* ll_itr_pop_current(ListItr *itr);
-bool ll_itr_has_next(ListItr* itr);
+// pops current itr element and advances the iterator
+void* ll_itr_pop_current(LinkedList *list);

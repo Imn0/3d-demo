@@ -152,13 +152,12 @@ void render(Player player, SDL_Surface* map1, LinkedList* entities) {
     SDL_UnlockSurface(map1);
     if (entities == NULL) { return; }
 
-    ListItr* itr = ll_itr_assign(entities);
+    ll_init_iterator(entities);
 
-    while (ll_itr_has_next(itr)) {
-        render_entity((Entity*)ll_itr_get(itr), &player);
-        ll_itr_next(itr);
+    while (ll_itr_has_current(entities)) {
+        render_entity((Entity*)ll_itr_get_current(entities), &player);
+        ll_itr_next(entities);
     }
-    free(itr);
 
 }
 

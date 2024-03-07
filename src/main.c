@@ -34,6 +34,7 @@ u32* pixels;
 
 
 i32 main(i32 argc, char* argv[]) {
+
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window* window = SDL_CreateWindow("demo",
                                           SDL_WINDOWPOS_UNDEFINED,
@@ -61,7 +62,7 @@ i32 main(i32 argc, char* argv[]) {
         .camera_plane = {0.0f, 0.66f}
     };
 
-    LinkedList* entities = ll_init();
+    LinkedList* entities = ll_create();
 
     u32 last_shoot = -1;
     i32 fps = 0;
@@ -93,12 +94,12 @@ i32 main(i32 argc, char* argv[]) {
 
 
         //TODO
-        if (SDL_GetTicks() - last_shoot > 40 && keys[SDL_SCANCODE_SPACE]) {
+        if (SDL_GetTicks() - last_shoot > 400 && keys[SDL_SCANCODE_SPACE]) {
             Entity* bullet = (Entity*)malloc(sizeof(Entity));
             bullet->position = (v2){ player.position.x, player.position.y };
             bullet->texture = test_sprite;
             bullet->velocity = (v2){ player.direction.x * 0.02f, player.direction.y * 0.02f };
-            ll_push_back(entities, bullet);
+            ll_append(entities, bullet);
             last_shoot = SDL_GetTicks();
         }
 
